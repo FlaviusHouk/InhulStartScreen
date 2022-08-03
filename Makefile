@@ -1,11 +1,22 @@
 CC=gcc
-OBJS=src/main.o src/container.o src/data_item.o src/item.o src/command.o
+OBJS= src/main.o \
+	src/inhul_sq_container.o \
+	src/inhul_sq_container_group_item.o \
+	src/inhul_command.o \
+	src/inhul_sq_container_group.o \
+	src/inhul_item_data_json.o \
+	src/inhul_item_data.o
+
+DATADIR=/usr/share
 
 GTK_CFLAGS=$(shell pkg-config --cflags gtk+-3.0)
 GTK_LIBS=$(shell pkg-config --libs gtk+-3.0)
 
-LIBS=$(GTK_LIBS)
-CFLAGS=$(GTK_CFLAGS) -g
+JSON_CFLAGS=$(shell pkg-config --cflags json-glib-1.0)
+JSON_LIBS=$(shell pkg-config --libs json-glib-1.0)
+
+LIBS=$(GTK_LIBS) $(JSON_LIBS)
+CFLAGS=$(GTK_CFLAGS) $(JSON_CFLAGS) -g -DDATADIR=\"$(DATADIR)\"
 
 all: startMenu
 
