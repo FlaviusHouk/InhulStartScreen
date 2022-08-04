@@ -6,10 +6,10 @@
 
 #define MARGIN      5
 
-#define ITEM_TALL   0
-#define ITEM_WIDE   1
-#define ITEM_COMMON 2
-#define ITEM_SMALL  3
+#define ITEM_TALL   1
+#define ITEM_WIDE   2
+#define ITEM_COMMON 3
+#define ITEM_SMALL  4
 
 static void
 inhul_sq_container_group_forall(GtkContainer* container, gboolean include_internals, GtkCallback callback, gpointer cb_data);
@@ -77,8 +77,9 @@ static void
 inhul_sq_container_allocate_child_size(GtkWidget* child, const StackItem* stack,  gint depth,  gpointer data)
 {
 	GtkAllocation* fullSize = (GtkAllocation*)data;
+	//depth--;
 
-	g_assert(depth <= ITEM_SMALL);
+	g_assert(depth <= ITEM_SMALL && depth >= 0);
 
 	GtkAllocation childAllocation;
 	if (depth == ITEM_TALL)
@@ -122,16 +123,16 @@ inhul_sq_container_allocate_child_size(GtkWidget* child, const StackItem* stack,
 
 		if(stack[2].idx == 1)
 		{
-			x += WIDE_ITEM_WIDTH / 2 + MARGIN * 2;
+			x += WIDE_ITEM_WIDTH / 2 + MARGIN;
 		}
 
-		x += ((WIDE_ITEM_WIDTH / 4) + MARGIN) * (stack[3].idx & 1);
-		y += ((WIDE_ITEM_HEIGHT / 4) + MARGIN) * (stack[3].idx & 2);
+		x += ((WIDE_ITEM_WIDTH / 4)) * (stack[3].idx & 1);
+		y += ((WIDE_ITEM_HEIGHT / 4)) * (stack[3].idx & 2);
 
 		childAllocation.x = x;
 		childAllocation.y = y;
-		childAllocation.width = (WIDE_ITEM_WIDTH / 4) - 2 * MARGIN;
-		childAllocation.height = (WIDE_ITEM_HEIGHT / 2) - 2 * MARGIN;
+		childAllocation.width = (WIDE_ITEM_WIDTH / 4) - MARGIN;
+		childAllocation.height = (WIDE_ITEM_HEIGHT / 2) - MARGIN;
 	}
 
 	gtk_widget_size_allocate(child, &childAllocation);
@@ -141,6 +142,25 @@ static void
 inhul_sq_container_group_size_allocate(GtkWidget* widget, GtkAllocation* allocation)
 {
 	InhulSqContainerGroup* this = INHUL_SQ_CONTAINER_GROUP(widget);
+
+	if(this->title)
+	{
+		gint naturalSize = 0;
+		gtk_widget_get_preferred_height(GTK_WIDGET(this->title), NULL, &naturalSize);
+
+		GtkAllocation titleSize = 
+		{
+			.x = allocation->x,
+			.y = allocation->y,
+			.width = allocation->width,
+			.height = naturalSize
+		};
+
+		gtk_widget_size_allocate(GTK_WIDGET(this->title), &titleSize);
+
+		allocation->y+=naturalSize;
+		allocation->height-=naturalSize;
+	}
 
 	inhul_sq_container_group_traverse_children(this, inhul_sq_container_allocate_child_size, allocation);
 }
@@ -156,16 +176,19 @@ inhul_sq_container_call_gtk_callback(GtkWidget* child, const StackItem* stack, g
 static void
 inhul_sq_container_group_traverse_children(const InhulSqContainerGroup* this, ItemCallback cb, gpointer data)
 {
-	StackItem stack[STACK_DEPTH];
+	StackItem stack[STACK_DEPTH + 1];
 
 	gint depth;
 	for(int i = 0; i<COLUMN_COUNT; i++)
 	{
-		depth = 0;
+		depth = 1;
 		InhulSqContainerGroupItem* item = this->columns[i];
 
 		if(item == NULL)
 			continue;
+
+		stack[0].item = NULL;
+		stack[0].idx = i;
 
 		stack[depth].item = item;
 		stack[depth].idx = 0;
@@ -193,7 +216,7 @@ inhul_sq_container_group_traverse_children(const InhulSqContainerGroup* this, It
 				stack[depth].idx = 0;
 				stack[depth--].item  = NULL;
 
-				if(depth < 0)
+				if(depth == 0)
 					break;
 					
 				stack[depth].idx++;

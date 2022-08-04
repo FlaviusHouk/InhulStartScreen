@@ -52,7 +52,7 @@ inhul_item_data_build(JsonObject* node)
 {
 	InhulItemGroup* group = g_new(InhulItemGroup, 1);
 
-	group->name = json_object_get_string_member(node, "Name");
+	group->name = g_strdup(json_object_get_string_member(node, "Name"));
 	group->children = g_ptr_array_new();
 
 	JsonArray* children = json_object_get_array_member(node, "Items");
