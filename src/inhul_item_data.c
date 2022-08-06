@@ -69,3 +69,72 @@ inhul_item_data_load_file(const gchar* fullPath)
 	return keyFile;
 }
 
+
+void
+inhul_item_data_traverse_group(const InhulItemGroup* group, void (*cb)(InhulItemData*, InhulItemDataStackItem*,gint,gpointer), gpointer data)
+{
+	GPtrArray* children = group->children; 
+	InhulItemDataStackItem stack[STACK_DEPTH + 1];
+
+	gint depth;
+	for(int i = 0; i<children->len; i++)
+	{
+		depth = 1;
+		InhulItemData* item = (InhulItemData*)children->pdata[i];
+
+		if(item == NULL)
+			continue;
+
+		stack[0].item = NULL;
+		stack[0].idx = i;
+
+		stack[depth].item = item;
+		stack[depth].idx = 0;
+		while(TRUE)
+		{
+			InhulItemData* curr = stack[depth].item;
+
+			if(curr->type == INHUL_ITEM_DESKTOP_FILE)
+			{
+				cb(curr, stack, depth, data);
+
+				depth--;
+				stack[depth].idx++;
+
+				continue;
+			}
+
+			gint index = stack[depth].idx;
+
+			if(curr->type == INHUL_ITEM_CONTAINER)
+			{
+				if(index == 0)
+				{
+					cb(curr, stack, depth, data);
+				}
+
+				if(index >= curr->children->len)
+				{
+					stack[depth].idx = 0;
+					stack[depth--].item  = NULL;
+
+					if(depth == 0)
+						break;
+					
+					stack[depth].idx++;
+
+					continue;
+				}
+			}
+
+			InhulItemData* child = curr->children->pdata[index];
+
+			if(child != NULL)
+			{
+				stack[++depth].item = child;
+				stack[depth].idx  = 0;
+			}
+		}
+	}
+}
+

@@ -2,14 +2,8 @@
 #include "inhul_sq_container_group_item.h"
 
 #define COLUMN_COUNT 3
-#define STACK_DEPTH 4
 
 #define MARGIN      5
-
-#define ITEM_TALL   1
-#define ITEM_WIDE   2
-#define ITEM_COMMON 3
-#define ITEM_SMALL  4
 
 static void
 inhul_sq_container_group_forall(GtkContainer* container, gboolean include_internals, GtkCallback callback, gpointer cb_data);
@@ -38,11 +32,18 @@ struct _CallbackWithData
 	gpointer data;
 };
 
+typedef struct _FillContext FillContext;
+struct _FillContext
+{
+	InhulSqContainerGroup* this;
+	StackItem* stack;
+};
+
 static void
-inhul_sq_container_group_fill_item(const InhulSqContainerGroup* this, const InhulItemData* data, InhulSqContainerGroupItem* item);
+inhul_sq_container_group_fill_item(InhulItemData* this, InhulItemDataStackItem*stack, gint depth, gpointer data);
 
 static GtkWidget*
-inhul_sq_container_group_create_widget_for_desktop_item(const InhulDesktopItemData* data);
+inhul_sq_container_group_create_widget_for_desktop_item(const InhulDesktopItemData* data, gboolean smallItem);
 
 static void
 inhul_sq_container_group_size_allocate(GtkWidget* widget, GtkAllocation* allocation);
@@ -77,7 +78,6 @@ static void
 inhul_sq_container_allocate_child_size(GtkWidget* child, const StackItem* stack,  gint depth,  gpointer data)
 {
 	GtkAllocation* fullSize = (GtkAllocation*)data;
-	//depth--;
 
 	g_assert(depth <= ITEM_SMALL && depth >= 0);
 
@@ -267,52 +267,98 @@ inhul_sq_container_group_new(const InhulItemGroup* group)
 	g_assert(group->children->len < COLUMN_COUNT);
 	this->columns = g_new0(InhulSqContainerGroupItem*, COLUMN_COUNT);
 
-	for(guint i = 0; i<group->children->len; i++)
+	StackItem stack[STACK_DEPTH + 1] =
 	{
-		const InhulItemData* itemData = (InhulItemData*)group->children->pdata[i];
-		InhulSqContainerGroupItem* item = inhul_sq_container_group_item_new(NULL);
-		
-		inhul_sq_container_group_fill_item(this, itemData, item);
+		{ NULL, 0 },
+		{ NULL, 0 },
+		{ NULL, 0 },
+		{ NULL, 0 },
+		{ NULL, 0 }
+	};
 
-		this->columns[i] = item;
-	}
+	FillContext ctx = 
+	{
+		.this = this,
+		.stack = stack
+	};
+
+	inhul_item_data_traverse_group(group, inhul_sq_container_group_fill_item, &ctx);
 
 	return this;
 }
 
+
 static void
-inhul_sq_container_group_fill_item(const InhulSqContainerGroup* this, const InhulItemData* data, InhulSqContainerGroupItem* item)
+inhul_sq_container_group_fill_item(InhulItemData* item, InhulItemDataStackItem*stack, gint depth, gpointer data)
 {
-	if(data->type == INHUL_ITEM_DESKTOP_FILE)
+	FillContext* ctx = (FillContext*)data;
+	InhulSqContainerGroup* this = ctx->this;
+	
+	g_assert(depth <= ITEM_SMALL && depth >= 0);
+
+	InhulSqContainerGroupItem* parentItem = NULL;
+	gint childIndex = 0;
+
+	if(depth > 0)
 	{
-		const InhulDesktopItemData* desktopItemData = data->desktopItemData;
+		parentItem = ctx->stack[depth - 1].item;
+		childIndex = ctx->stack[depth - 1].idx++;
+	}
 
-		GtkWidget* widget = inhul_sq_container_group_create_widget_for_desktop_item(desktopItemData);	
+	if(ctx->stack[depth].idx > stack[depth].idx)
+	{
+		for(int i = depth; i<STACK_DEPTH; i++)
+		{
+			ctx->stack[i].idx = 0;
+		}
+	}	
 
-		inhul_sq_container_group_item_set_widget(item, widget);
+	if(item == NULL)
+	{
+		inhul_sq_container_group_item_set_child(parentItem, childIndex, NULL);
+	}
+	else if(item->type == INHUL_ITEM_DESKTOP_FILE)
+	{
+		InhulSqContainerGroupItem* groupItem = inhul_sq_container_group_item_new(parentItem);
+
+		if(depth == ITEM_TALL)
+		{
+			this->columns[childIndex]=groupItem;
+		}
+
+		const InhulDesktopItemData* desktopItemData = item->desktopItemData;
+
+		GtkWidget* widget = inhul_sq_container_group_create_widget_for_desktop_item(desktopItemData, depth == ITEM_SMALL);
+
+		inhul_sq_container_group_item_set_widget(groupItem, widget);
 
 		gtk_widget_set_parent(widget, GTK_WIDGET(this));
+
+		if(parentItem)
+			inhul_sq_container_group_item_set_child(parentItem, childIndex, groupItem);
+
+		ctx->stack[depth].item = groupItem;
+
+		return;
+	}
+	else if(item->type == INHUL_ITEM_CONTAINER)
+	{
+		InhulSqContainerGroupItem* childItem = inhul_sq_container_group_item_new(parentItem);
+
+		if(depth == ITEM_TALL)
+		{
+			this->columns[childIndex] = childItem;
+		}
+
+		ctx->stack[depth].item = childItem;
+
+		if(parentItem)
+			inhul_sq_container_group_item_set_child(parentItem, childIndex, childItem);
 
 		return;
 	}
 
-	g_assert(data->type == INHUL_ITEM_CONTAINER);
-
-	GPtrArray* children = data->children;
-	for(guint i = 0; i<children->len; i++)
-	{
-		InhulItemData* childItemData = (InhulItemData*)children->pdata[i];
-		InhulSqContainerGroupItem* childItem = NULL;
-
-		if(childItemData)
-		{
-			/*TODO: set parent on assigning as a child*/
-			childItem = inhul_sq_container_group_item_new(item);
-			inhul_sq_container_group_fill_item(this, childItemData, childItem);
-		}
-
-		inhul_sq_container_group_item_set_child(item, i, childItem);
-	}
+	g_assert(FALSE);
 }
 
 static void
@@ -324,15 +370,18 @@ inhul_sq_container_group_item_activated(GtkButton* button, gpointer data)
 }
 
 static GtkWidget*
-inhul_sq_container_group_create_widget_for_desktop_item(const InhulDesktopItemData* data)
+inhul_sq_container_group_create_widget_for_desktop_item(const InhulDesktopItemData* data, gboolean smallItem)
 {
 	GError* err = NULL;
 
 	GtkWidget* button = gtk_button_new();
-	GtkWidget* box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
+	GtkWidget* box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);	
 
-	GtkWidget* titleLabel = gtk_label_new(data->title);
-	gtk_box_pack_end(GTK_BOX(box), titleLabel, FALSE, FALSE, 2);
+	if(!smallItem)
+	{
+		GtkWidget* titleLabel = gtk_label_new(data->title);
+		gtk_box_pack_end(GTK_BOX(box), titleLabel, FALSE, FALSE, 2);
+	}
 
 	GtkIconTheme* iconTheme = gtk_icon_theme_get_default();
 	GdkPixbuf* icon = gtk_icon_theme_load_icon(iconTheme, data->icon_name, 32, 0, &err);
@@ -345,6 +394,8 @@ inhul_sq_container_group_create_widget_for_desktop_item(const InhulDesktopItemDa
 
 	GtkWidget* image = gtk_image_new_from_pixbuf(icon);
 	gtk_box_pack_start(GTK_BOX(box), image, TRUE, TRUE, 2);
+
+	gtk_widget_set_tooltip_text(image, data->title);
 
 	g_signal_connect(button, "clicked", G_CALLBACK(inhul_sq_container_group_item_activated), data->command);
 
