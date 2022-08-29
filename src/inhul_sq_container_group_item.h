@@ -1,35 +1,24 @@
 #ifndef _SQ_CONTAINER_GROUP_ITEM_H_
 #define _SQ_CONTAINER_GROUP_ITEM_H_
 
+#include "inhul_item_data.h"
+#include "gvm_container.h"
+
 #include <gtk/gtk.h>
 
-typedef struct _InhulSqContainerGroupItem InhulSqContainerGroupItem;
+#define WIDE_ITEM_HEIGHT 130
+#define WIDE_ITEM_WIDTH  270
 
-InhulSqContainerGroupItem*
-inhul_sq_container_group_item_new(InhulSqContainerGroupItem* parent);
+#define MARGIN 5
+
+#define INHUL_TYPE_SQ_CONTAINER_GROUP_ITEM inhul_sq_container_group_item_get_type()
+
+G_DECLARE_FINAL_TYPE(InhulSqContainerGroupItem, inhul_sq_container_group_item, INHUL, SQ_CONTAINER_GROUP_ITEM, GvmContainer);
 
 GtkWidget*
-inhul_sq_container_group_item_get_widget(InhulSqContainerGroupItem* item);
-
-void
-inhul_sq_container_group_item_set_widget(InhulSqContainerGroupItem* item, GtkWidget* widget);
+inhul_sq_container_group_item_create_widget_for_desktop_item(const InhulDesktopItemData* data, gboolean smallItem);
 
 InhulSqContainerGroupItem*
-inhul_sq_container_group_item_get_parent(InhulSqContainerGroupItem* item);
-
-void
-inhul_sq_container_group_item_set_parent(InhulSqContainerGroupItem* item, InhulSqContainerGroupItem* parent);
-
-guint
-inhul_sq_container_group_item_get_children_count(InhulSqContainerGroupItem* item);
-
-InhulSqContainerGroupItem*
-inhul_sq_container_group_item_get_child(InhulSqContainerGroupItem* item, guint index);
-
-void
-inhul_sq_container_group_item_set_child(InhulSqContainerGroupItem* item, guint index, InhulSqContainerGroupItem* child);
-
-void
-inhul_sq_container_group_item_free(InhulSqContainerGroupItem* item);
+inhul_sq_container_group_item_new(InhulItemData* item);
 
 #endif //_SQ_CONTAINER_GROUP_ITEM_H_
