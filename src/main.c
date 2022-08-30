@@ -1,6 +1,7 @@
 #define GETTEXT_PACKAGE "gtk3"
 #include <glib/gi18n-lib.h>
 #include <locale.h>
+#include <math.h>
 
 #include "inhul_sq_container.h"
 #include "inhul_item_data_json.h"
@@ -25,7 +26,6 @@ struct _SetItemsData
 static gboolean
 set_items_on_idle(gpointer data)
 {
-	gboolean val = g_idle_remove_by_data(data);
 	struct _SetItemsData* d = (struct _SetItemsData*)data;
 
 	gvm_container_set_items(GVM_CONTAINER(d->container), d->items);
@@ -47,7 +47,7 @@ on_size_allocated(GtkWidget* widget, GtkAllocation* allocation, gpointer data)
 
 	gint height = allocation->height / (WIDE_ITEM_HEIGHT + 5);
 	gint groupElemCount = height * 2 * 3;
-	gint groupCount = items->len / groupElemCount;
+	gint groupCount = (gint)ceil(items->len * 1.0 / groupElemCount);
 
 	for(gint i = 0; i < groupCount; i++)
 	{
@@ -115,6 +115,18 @@ on_size_allocated(GtkWidget* widget, GtkAllocation* allocation, gpointer data)
 	g_idle_add(set_items_on_idle, d);
 }
 
+static void
+on_shutdown(GApplication* app, gpointer data)
+{
+	GError* err = NULL;
+
+	InhulSqContainer* container = INHUL_SQ_CONTAINER(data);
+
+	GvmObservableCollection* items = gvm_container_get_items(GVM_CONTAINER(container));
+
+	inhul_item_data_save_data("layout.json", items, &err);
+}
+
 static void on_application_activated(GtkApplication* app, gpointer user_data)
 {
 	GError* err = NULL;
@@ -150,7 +162,10 @@ static void on_application_activated(GtkApplication* app, gpointer user_data)
 		gvm_container_set_items(GVM_CONTAINER(sqContainer), items);
 	}
 
-	gtk_box_pack_start(GTK_BOX(box), GTK_WIDGET(sqContainer), TRUE, TRUE, 5);
+	GtkWidget* scroller = gtk_scrolled_window_new(NULL, NULL);
+	gtk_container_add(GTK_CONTAINER(scroller), GTK_WIDGET(sqContainer));
+
+	gtk_box_pack_start(GTK_BOX(box), GTK_WIDGET(scroller), TRUE, TRUE, 5);
 
 	gtk_container_set_border_width(GTK_CONTAINER(box), 25);
 
@@ -163,6 +178,8 @@ static void on_application_activated(GtkApplication* app, gpointer user_data)
 
 		g_signal_connect(G_OBJECT(sqContainer), "size-allocate", G_CALLBACK(on_size_allocated), desktopItems);
 	}
+
+	g_signal_connect(G_OBJECT(app), "shutdown", G_CALLBACK(on_shutdown), sqContainer);
 }
 
 int main(int argc, char** argv)

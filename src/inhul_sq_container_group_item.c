@@ -216,6 +216,7 @@ inhul_sq_container_group_item_create_widget_for_desktop_item(const InhulDesktopI
 	if(!smallItem)
 	{
 		GtkWidget* titleLabel = gtk_label_new(data->title);
+		gtk_label_set_line_wrap(GTK_LABEL(titleLabel), TRUE);
 		gtk_box_pack_end(GTK_BOX(box), titleLabel, FALSE, FALSE, 2);
 	}
 

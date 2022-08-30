@@ -20,6 +20,7 @@ typedef struct _InhulItemGroup InhulItemGroup;
 
 struct _InhulDesktopItemData
 {
+	const gchar* desktopFileName;
 	const gchar* title;
 	const gchar* description;
 	const gchar* icon_name;

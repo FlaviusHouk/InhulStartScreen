@@ -19,7 +19,7 @@ GTK_LIBS=$(shell pkg-config --libs gtk+-3.0)
 JSON_CFLAGS=$(shell pkg-config --cflags json-glib-1.0)
 JSON_LIBS=$(shell pkg-config --libs json-glib-1.0)
 
-LIBS=$(GTK_LIBS) $(JSON_LIBS)
+LIBS=$(GTK_LIBS) $(JSON_LIBS) -lm
 CFLAGS=$(GTK_CFLAGS) $(JSON_CFLAGS) -g -DDATADIR=\"$(DATADIR)\"
 
 all: startMenu

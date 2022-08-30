@@ -6,8 +6,8 @@
 
 #include <gtk/gtk.h>
 
-#define WIDE_ITEM_HEIGHT 130
-#define WIDE_ITEM_WIDTH  270
+#define WIDE_ITEM_HEIGHT 120
+#define WIDE_ITEM_WIDTH  250
 
 #define MARGIN 5
 

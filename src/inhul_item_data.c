@@ -65,6 +65,7 @@ inhul_item_data_parse_desktop_file(const gchar* desktopFileName)
 {
 	GError* error = NULL;
 	InhulDesktopItemData* item = g_new0(InhulDesktopItemData, 1);
+	item->desktopFileName = g_strdup(desktopFileName);
 
 	GKeyFile* desktopFile = inhul_item_data_get_desktop_file(desktopFileName);
 

@@ -44,6 +44,112 @@ inhul_item_data_load_from_json(const gchar* jsonFile, GError** err)
 	return groups;
 }
 
+static void
+inhul_item_data_save_item(InhulItemData* item, JsonBuilder* builder)
+{
+	json_builder_begin_object(builder);
+
+	if(item->type == INHUL_ITEM_DESKTOP_FILE)
+	{
+		json_builder_set_member_name(builder, "Type");
+		json_builder_add_string_value(builder, "Desktop");
+
+		json_builder_set_member_name(builder, "FileName");
+		json_builder_add_string_value(builder, item->desktopItemData->desktopFileName);
+	}
+	else
+	{
+		json_builder_set_member_name(builder, "Children");
+		json_builder_begin_array(builder);
+
+		GvmIterator* iter = gvm_observable_collection_get_iterator(item->children);
+
+		for(gpointer child = gvm_iterator_get_current(iter); gvm_iterator_move_next(iter); child = gvm_iterator_get_current(iter))
+		{
+			InhulItemData* childItem = (InhulItemData*)child;
+
+			inhul_item_data_save_item(childItem, builder);
+		}
+
+		g_free(iter);
+
+		json_builder_end_array(builder);
+	}
+
+	json_builder_end_object(builder);
+}
+
+static void
+inhul_item_data_save_group(InhulItemGroup* group, JsonBuilder* builder)
+{
+	json_builder_begin_object(builder);
+
+	json_builder_set_member_name(builder, "Type");
+	json_builder_add_string_value(builder, "Group");
+
+	json_builder_set_member_name(builder, "Name");
+	json_builder_add_string_value(builder, group->name);
+
+	json_builder_set_member_name(builder, "Items");
+	json_builder_begin_array(builder);
+
+	GvmIterator* iter = gvm_observable_collection_get_iterator(group->children);
+
+	for(gpointer item = gvm_iterator_get_current(iter); gvm_iterator_move_next(iter); item = gvm_iterator_get_current(iter))
+	{
+		InhulItemData* childItem = (InhulItemData*)item;
+
+		inhul_item_data_save_item(childItem, builder);
+	}
+
+	json_builder_end_array(builder);
+
+	json_builder_end_object(builder);
+
+	g_free(iter);
+}
+
+void
+inhul_item_data_save_data(const gchar* jsonFile, GvmObservableCollection* items, GError** err)
+{
+	GError* innErr = NULL;
+
+	JsonBuilder* builder = json_builder_new();
+
+	json_builder_begin_object(builder);
+
+	json_builder_set_member_name(builder, "Groups");
+	json_builder_begin_array(builder);
+
+	GvmIterator* iter = gvm_observable_collection_get_iterator(items);
+
+	for(gpointer item = gvm_iterator_get_current(iter); gvm_iterator_move_next(iter); item = gvm_iterator_get_current(iter))
+	{
+		InhulItemGroup* group = (InhulItemGroup*)item;
+
+		inhul_item_data_save_group(group, builder);
+	}
+
+	json_builder_end_array(builder);
+	json_builder_end_object(builder);
+
+	JsonNode* root = json_builder_get_root(builder);
+
+	JsonGenerator* generator = json_generator_new();
+	json_generator_set_root(generator, root);
+	json_generator_set_pretty(generator, TRUE);
+
+	if(!json_generator_to_file(generator, jsonFile, &innErr))
+	{
+		g_error("%s\n", innErr->message);
+		g_assert(0);
+	}
+
+	g_object_unref(G_OBJECT(builder));
+	g_object_unref(G_OBJECT(generator));
+	g_free(iter);
+}
+
 InhulItemGroup*
 inhul_item_data_build(JsonObject* node)
 {
