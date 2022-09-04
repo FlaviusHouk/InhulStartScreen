@@ -143,7 +143,31 @@ on_shutdown(GApplication* app, gpointer data)
 	g_ptr_array_unref(itemsToWrite);
 }
 
-static void on_application_activated(GtkApplication* app, gpointer user_data)
+static void
+load_styles()
+{
+	GError* err = NULL;
+
+	GdkScreen* screen = gdk_screen_get_default();
+	GtkCssProvider* styleProvider = gtk_css_provider_new();
+
+	GFile* cssFile = g_file_new_for_path("styles.css");
+	gtk_css_provider_load_from_file(styleProvider, cssFile, &err);
+
+	if(err)
+	{
+		g_error("%s\n", err->message);
+		g_assert(FALSE);
+	}
+
+	gtk_style_context_add_provider_for_screen(screen, GTK_STYLE_PROVIDER(styleProvider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+
+	g_object_unref(G_OBJECT(cssFile));
+	g_object_unref(G_OBJECT(styleProvider));
+}
+
+static void 
+on_application_activated(GtkApplication* app, gpointer user_data)
 {
 	GError* err = NULL;
 
@@ -153,6 +177,8 @@ static void on_application_activated(GtkApplication* app, gpointer user_data)
     gtk_window_set_decorated(GTK_WINDOW(window), FALSE);
 
 	gtk_widget_show(window);
+
+	load_styles();
 
 	GtkWidget* box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
 	GtkWidget* titleBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
@@ -192,7 +218,9 @@ static void on_application_activated(GtkApplication* app, gpointer user_data)
 
 	gtk_box_pack_start(GTK_BOX(box), GTK_WIDGET(scroller), TRUE, TRUE, 5);
 
-	gtk_container_set_border_width(GTK_CONTAINER(box), 25);
+	gint margin = 50;
+
+	g_object_set(G_OBJECT(sqContainer), "margin-top", margin, "margin-right", margin, "margin-left", margin, NULL);
 
 	gtk_container_add(GTK_CONTAINER(window), GTK_WIDGET(box));
     gtk_widget_show_all (box);

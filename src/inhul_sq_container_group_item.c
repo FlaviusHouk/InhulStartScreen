@@ -243,6 +243,9 @@ inhul_sq_container_group_item_create_widget_for_desktop_item(const InhulDesktopI
 
 	g_signal_connect(button, "clicked", G_CALLBACK(inhul_sq_container_group_item_activated), data->command);
 
+	GtkStyleContext* buttonStyleContext = gtk_widget_get_style_context(GTK_WIDGET(button));
+	gtk_style_context_add_class(buttonStyleContext, "item");
+
 	gtk_container_add(GTK_CONTAINER(button), GTK_WIDGET(box));
 	return button;
 }
