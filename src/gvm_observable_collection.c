@@ -32,7 +32,7 @@ gvm_observable_collection_iterator_current(gpointer iter)
 		g_assert(0);
 	}
 
-	if(iterImpl->index >= arr->len)
+	if(iterImpl->index >= arr->len || iterImpl->index < 0)
 		return NULL;
 
 	return arr->pdata[iterImpl->index];
@@ -45,7 +45,9 @@ gvm_observable_collection_iterator_move_next(gpointer iter)
 
 	GPtrArray* arr = iterImpl->collection->array;
 
-	return iterImpl->index++ < arr->len;
+	iterImpl->index++;
+
+	return iterImpl->index < arr->len;
 }
 
 static void
@@ -103,6 +105,27 @@ gvm_observable_collection_get(const GvmObservableCollection* this, gint index)
 	return this->array->pdata[index];
 }
 
+void
+gvm_observable_collection_set(GvmObservableCollection* this, gpointer item, gint index)
+{
+	g_assert(this);
+
+	g_assert(this->array->len < index);
+
+	gpointer oldItem = this->array->pdata[index];
+	this->array->pdata[index] = item;
+
+	GvmCollectionChangedArgs args =
+	{
+		.oldItem = oldItem,
+		.newItem = item,
+		.index = index,
+		.operation = COLLECTION_CHANGE_POSITION
+	};
+
+	g_signal_emit(G_OBJECT(this), changedSignal, 0, &args); 
+}
+
 gint
 gvm_observable_collection_get_length(const GvmObservableCollection* this)
 {
@@ -114,13 +137,21 @@ gvm_observable_collection_get_iterator(const GvmObservableCollection* this)
 {
 	GvmObservableCollectionIterator* iterImpl = g_new(GvmObservableCollectionIterator, 1);
 
-	iterImpl->index = 0;
+	iterImpl->index = -1;
 	iterImpl->originalCollectionLength = this->array->len;
 	iterImpl->collection = this;
 
-	GvmIterator* iter = gvm_iterator_new(iterImpl, gvm_observable_collection_iterator_current, gvm_observable_collection_iterator_move_next);
+	GvmIterator* iter = gvm_iterator_new(iterImpl, gvm_observable_collection_iterator_current, gvm_observable_collection_iterator_move_next, g_free);
 
 	return iter;
+}
+
+gboolean
+gvm_observable_collection_find(const GvmObservableCollection* this, gconstpointer item, guint* index)
+{
+	g_assert(this);
+
+	return g_ptr_array_find(this->array, item, index);
 }
 
 void

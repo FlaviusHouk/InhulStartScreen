@@ -22,8 +22,6 @@ inhul_sq_container_generate_item(gpointer item);
 struct _InhulSqContainer
 {
 	GtkContainer base;
-
-	gint lastAllocatedHeight;
 }; 
 
 G_DEFINE_TYPE(InhulSqContainer, inhul_sq_container, GVM_TYPE_CONTAINER);
@@ -93,7 +91,6 @@ inhul_sq_container_allocate(GtkWidget* widget, GtkAllocation* allocation)
 	};
 
 	gtk_widget_set_allocation(widget, allocation);
-	this->lastAllocatedHeight = allocation->height;
 
 	inhul_sq_container_forall(GTK_CONTAINER(widget), FALSE, inhul_sq_container_allocate_child_size, &child_alloc);
 }
@@ -122,6 +119,9 @@ inhul_sq_container_forall(GtkContainer* container, gboolean include_internals, G
 
 		callback(GTK_WIDGET(child), cb_data);
 	}
+
+	//TODO: uncomment and investigate SIGSEGV.
+	//g_free(visualChildren);
 }
 
 InhulSqContainer*
@@ -135,7 +135,7 @@ inhul_sq_container_new()
 static GtkWidget*
 inhul_sq_container_generate_item(gpointer item)
 {
-	InhulItemGroup* group = (InhulItemGroup*)item;
+	InhulViewModelGroup* group = (InhulViewModelGroup*)item;
 
 	return GTK_WIDGET(inhul_sq_container_group_new(group));
 }

@@ -37,8 +37,10 @@ gvm_container_create_visual_children(GvmContainer* this)
 
 	GvmIterator* iter = gvm_observable_collection_get_iterator(priv->items);
 
-	for(gpointer item = gvm_iterator_get_current(iter); gvm_iterator_move_next(iter); item = gvm_iterator_get_current(iter))
+	while(gvm_iterator_move_next(iter))
 	{
+		gpointer item = gvm_iterator_get_current(iter);
+
 		GtkWidget* child = GVM_CONTAINER_GET_CLASS(this)->generateItem(item);
 
 		g_hash_table_insert(priv->mapping, item, child);
@@ -153,8 +155,9 @@ gvm_container_get_visual_items(GvmContainer* this)
 
 	GvmIterator* iter = gvm_observable_collection_get_iterator(priv->items);
 
-	for(gpointer item = gvm_iterator_get_current(iter); gvm_iterator_move_next(iter); item = gvm_iterator_get_current(iter))
+	while(gvm_iterator_move_next(iter))
 	{
+		gpointer item = gvm_iterator_get_current(iter);
 		gpointer visualChild = g_hash_table_lookup(priv->mapping, item);
 
 		//Not the best way. TODO: refactor

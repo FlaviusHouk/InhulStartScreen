@@ -45,8 +45,14 @@ gvm_observable_collection_add(GvmObservableCollection* this, gpointer item);
 gpointer
 gvm_observable_collection_get(const GvmObservableCollection* this, gint index);
 
+void
+gvm_observable_collection_set(GvmObservableCollection* this, gpointer item, gint index);
+
 gint
 gvm_observable_collection_get_length(const GvmObservableCollection* this);
+
+gboolean
+gvm_observable_collection_find(const GvmObservableCollection* this, gconstpointer item, guint* index);
 
 GvmIterator*
 gvm_observable_collection_get_iterator(const GvmObservableCollection* this);

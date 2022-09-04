@@ -15,6 +15,9 @@ struct _InhulExecStringCommandData
 InhulCommand*
 inhul_command_new_print_exec_string(InhulExecStringCommandData* data);
 
+InhulCommand*
+inhul_command_new_custom(void (*execute)(gpointer data), gboolean (*can_execute)(gpointer data), gpointer data, void (*free_func)(gpointer data));
+
 void
 inhul_command_execute(const InhulCommand* this);
 

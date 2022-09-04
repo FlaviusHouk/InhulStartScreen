@@ -14,7 +14,7 @@ struct _InhulSqContainerGroup
 	GvmContainer base;
 	GtkLabel* title;
 
-	InhulItemGroup* group;
+	InhulViewModelGroup* group;
 };
 
 
@@ -120,22 +120,27 @@ inhul_sq_container_group_size_allocate(GtkWidget* widget, GtkAllocation* allocat
 }
 
 InhulSqContainerGroup*
-inhul_sq_container_group_new(InhulItemGroup* group)
+inhul_sq_container_group_new(InhulViewModelGroup* group)
 {
+	g_assert(group);
+
 	InhulSqContainerGroup* this = g_object_new(INHUL_TYPE_SQ_CONTAINER_GROUP, NULL);
 
-	if(group->name)
+	const gchar* name = inhul_view_model_group_get_name(group);
+
+	if(name)
 	{
-		const gchar* name = g_strdup(group->name);
 		this->title=GTK_LABEL(gtk_label_new(name));
 		gtk_widget_set_parent(GTK_WIDGET(this->title), GTK_WIDGET(this));
 	}
 
-	g_assert(gvm_observable_collection_get_length(group->children) <= COLUMN_COUNT);
+	GvmObservableCollection* children = inhul_view_model_group_get_children(group);
+
+	g_assert(gvm_observable_collection_get_length(children) <= COLUMN_COUNT);
 
 	this->group = group;
 
-	gvm_container_set_items(GVM_CONTAINER(this), group->children);
+	gvm_container_set_items(GVM_CONTAINER(this), children);
 
 	return this;
 }
@@ -164,11 +169,15 @@ inhul_sq_container_group_forall(GtkContainer* container, gboolean include_intern
 static GtkWidget*
 inhul_sq_container_group_generate_item(gpointer item)
 {
-	InhulItemData* childItem = (InhulItemData*)item;
+	InhulViewModelItem* childItem = (InhulViewModelItem*)item;
+	InhulItemDataType itemType = inhul_view_model_item_get_item_type(childItem);
 
-	if(childItem->type == INHUL_ITEM_DESKTOP_FILE)
+	if(itemType == INHUL_ITEM_DESKTOP_FILE)
 	{
-		return inhul_sq_container_group_item_create_widget_for_desktop_item(childItem->desktopItemData, childItem->level == ITEM_SMALL);
+		InhulDesktopItemData* desktopItemData = inhul_view_model_item_get_desktop_item_data(childItem);
+		InhulItemLevel level = inhul_view_model_item_get_level(childItem);
+
+		return inhul_sq_container_group_item_create_widget_for_desktop_item(desktopItemData, level == ITEM_SMALL);
 	}
 
 	return GTK_WIDGET(inhul_sq_container_group_item_new(childItem));

@@ -5,6 +5,7 @@
 
 #include "inhul_sq_container.h"
 #include "inhul_item_data_json.h"
+#include "inhul_view_model_group.h"
 #include "inhul_sq_container_group_item.h"
 
 #define DEFAULT_LAYOUT_FILE_NAME "layout.json"
@@ -52,14 +53,14 @@ on_size_allocated(GtkWidget* widget, GtkAllocation* allocation, gpointer data)
 	for(gint i = 0; i < groupCount; i++)
 	{
 		InhulItemGroup* group = g_new0(InhulItemGroup, 1);
-		group->children = gvm_observable_collection_new();
+		group->children = g_ptr_array_new();
 
 		for(gint j = 0; j < 3; j++)
 		{
 			InhulItemData* tallItem = g_new(InhulItemData, 1);
 			tallItem->type = INHUL_ITEM_CONTAINER;
 			tallItem->level = ITEM_TALL;
-			tallItem->children = gvm_observable_collection_new();
+			tallItem->children = g_ptr_array_new();
 
 			for(gint k = 0; k < height; k++)
 			{	
@@ -67,7 +68,7 @@ on_size_allocated(GtkWidget* widget, GtkAllocation* allocation, gpointer data)
 
 				if(index >= items->len)
 				{
-					gvm_observable_collection_add(group->children, tallItem);
+					g_ptr_array_add(group->children, tallItem);
 
 					goto cycle_end;
 				}
@@ -75,20 +76,20 @@ on_size_allocated(GtkWidget* widget, GtkAllocation* allocation, gpointer data)
 				InhulItemData* wideItem = g_new(InhulItemData, 1);
 				wideItem->type = INHUL_ITEM_CONTAINER;
 				wideItem->level = ITEM_WIDE;
-				wideItem->children = gvm_observable_collection_new();
+				wideItem->children = g_ptr_array_new();
 				
 				InhulItemData* item = g_new(InhulItemData, 1);
 				item->type = INHUL_ITEM_DESKTOP_FILE;
 				item->level = ITEM_COMMON;
 				item->desktopItemData = (InhulDesktopItemData*)items->pdata[index];
 
-				gvm_observable_collection_add(wideItem->children, item);
-				gvm_observable_collection_add(tallItem->children, wideItem);
+				g_ptr_array_add(wideItem->children, item);
+				g_ptr_array_add(tallItem->children, wideItem);
 				index++;
 
 				if(index >= items->len)
 				{
-					gvm_observable_collection_add(group->children, tallItem);
+					g_ptr_array_add(group->children, tallItem);
 
 					goto cycle_end;
 				}
@@ -98,14 +99,15 @@ on_size_allocated(GtkWidget* widget, GtkAllocation* allocation, gpointer data)
 				item->level = ITEM_COMMON;
 				item->desktopItemData = (InhulDesktopItemData*)items->pdata[index];
 
-				gvm_observable_collection_add(wideItem->children, item);
+				g_ptr_array_add(wideItem->children, item);
 			}
 
-			gvm_observable_collection_add(group->children, tallItem);
-		}
+			g_ptr_array_add(group->children, tallItem);
+		}	
 
 		cycle_end:
-		gvm_observable_collection_add(structuredItems, group);
+		InhulViewModelGroup* groupVm = inhul_view_model_group_new(group);
+		gvm_observable_collection_add(structuredItems, groupVm);
 	}
 
 	struct _SetItemsData* d = g_new(struct _SetItemsData, 1);
@@ -123,8 +125,22 @@ on_shutdown(GApplication* app, gpointer data)
 	InhulSqContainer* container = INHUL_SQ_CONTAINER(data);
 
 	GvmObservableCollection* items = gvm_container_get_items(GVM_CONTAINER(container));
+	GPtrArray* itemsToWrite = g_ptr_array_new();
 
-	inhul_item_data_save_data("layout.json", items, &err);
+	GvmIterator* iter = gvm_observable_collection_get_iterator(items);
+
+	while(gvm_iterator_move_next(iter))
+	{
+		InhulViewModelGroup* groupVm = INHUL_VIEW_MODEL_GROUP(gvm_iterator_get_current(iter));
+
+		InhulItemGroup* group = inhul_view_model_group_get_group(groupVm);
+
+		g_ptr_array_add(itemsToWrite, group);
+	}
+
+	inhul_item_data_save_data("layout.json", itemsToWrite, &err);
+
+	g_ptr_array_unref(itemsToWrite);
 }
 
 static void on_application_activated(GtkApplication* app, gpointer user_data)
@@ -156,7 +172,16 @@ static void on_application_activated(GtkApplication* app, gpointer user_data)
 			g_print("%s\n", err->message);
 			g_application_release(G_APPLICATION(app));
 		}
- 
+
+		for(gint i = 0; i < groups->len; i++)
+		{
+			InhulItemGroup* group = (InhulItemGroup*)groups->pdata[i];
+
+			InhulViewModelGroup* groupVm = inhul_view_model_group_new(group);
+
+			groups->pdata[i] = groupVm;
+		}
+
 		GvmObservableCollection* items = gvm_observable_collection_new_with_data(groups);
 
 		gvm_container_set_items(GVM_CONTAINER(sqContainer), items);

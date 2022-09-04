@@ -13,17 +13,10 @@ struct _InhulSqContainerGroupItem
 {
 	GvmContainer base;
 
-	InhulItemData* item;
+	InhulViewModelItem* item;
 };
 
 G_DEFINE_TYPE(InhulSqContainerGroupItem, inhul_sq_container_group_item, GVM_TYPE_CONTAINER); 
-
-static void
-inhul_sq_container_group_item_remove(GtkContainer* container, GtkWidget* child)
-{
-	gint i = 0;
-	i++;
-}
 
 static void
 inhul_sq_container_group_item_class_init(InhulSqContainerGroupItemClass* klass)
@@ -33,7 +26,6 @@ inhul_sq_container_group_item_class_init(InhulSqContainerGroupItemClass* klass)
 	
 	GtkContainerClass* containerClass = GTK_CONTAINER_CLASS(klass);
 	containerClass->forall = inhul_sq_container_group_item_forall;
-	containerClass->remove = inhul_sq_container_group_item_remove;
 
 	GvmContainerClass* gvmContainerClass = GVM_CONTAINER_CLASS(klass);
 	gvmContainerClass->generateItem = inhul_sq_container_group_item_generate_item;
@@ -47,15 +39,19 @@ inhul_sq_container_group_item_init(InhulSqContainerGroupItem* this)
 }
 
 InhulSqContainerGroupItem*
-inhul_sq_container_group_item_new(InhulItemData* item)
+inhul_sq_container_group_item_new(InhulViewModelItem* item)
 {
 	InhulSqContainerGroupItem* this = g_object_new(INHUL_TYPE_SQ_CONTAINER_GROUP_ITEM, NULL);
 
 	this->item = item;
 
-	g_assert(item->type == INHUL_ITEM_CONTAINER);
+	InhulItemDataType itemType = inhul_view_model_item_get_item_type(item);
 
-	gvm_container_set_items(GVM_CONTAINER(this), item->children);
+	g_assert(itemType == INHUL_ITEM_CONTAINER);
+
+	GvmObservableCollection* children = inhul_view_model_item_get_children(item);
+
+	gvm_container_set_items(GVM_CONTAINER(this), children);
 
 	return this;
 }
@@ -73,18 +69,20 @@ inhul_sq_container_group_item_size_allocate(GtkWidget* widget, GtkAllocation* al
 		return;
 	}
 
-	if(this->item->type == INHUL_ITEM_DESKTOP_FILE)
-	{
-		GtkWidget* widget = visualChildren->data;
+	InhulItemDataType itemType = inhul_view_model_item_get_item_type(this->item);
 
-		gtk_widget_size_allocate(widget, allocation);
+	if(itemType == INHUL_ITEM_DESKTOP_FILE)
+	{
+		GtkWidget* desktopWidget = GTK_WIDGET(visualChildren->data);
+
+		gtk_widget_size_allocate(desktopWidget, allocation);
 
 		return;
 	}
 
-	g_assert(this->item->type == INHUL_ITEM_CONTAINER);
+	g_assert(itemType == INHUL_ITEM_CONTAINER);
 
-	InhulItemLevel level = this->item->level;
+	InhulItemLevel level = inhul_view_model_item_get_level(this->item);
 
 	GList* iter = visualChildren;
 	switch (level)
@@ -187,11 +185,16 @@ inhul_sq_container_group_item_forall(GtkContainer* container, gboolean include_i
 static GtkWidget*
 inhul_sq_container_group_item_generate_item(gpointer item)
 {
-	InhulItemData* childItem = (InhulItemData*)item;
+	InhulViewModelItem* childItem = (InhulViewModelItem*)item;
+	InhulItemDataType itemType = inhul_view_model_item_get_item_type(childItem);
 
-	if(childItem->type == INHUL_ITEM_DESKTOP_FILE)
+	if(itemType == INHUL_ITEM_DESKTOP_FILE)
 	{
-		return inhul_sq_container_group_item_create_widget_for_desktop_item(childItem->desktopItemData, childItem->level == ITEM_SMALL);
+		InhulDesktopItemData* desktopItemData = inhul_view_model_item_get_desktop_item_data(childItem);
+
+		InhulItemLevel level = inhul_view_model_item_get_level(childItem);
+
+		return inhul_sq_container_group_item_create_widget_for_desktop_item(desktopItemData, level == ITEM_SMALL);
 	}
 
 	return GTK_WIDGET(inhul_sq_container_group_item_new(childItem));

@@ -1,7 +1,7 @@
 #ifndef _SQ_CONTAINER_GROUP_ITEM_H_
 #define _SQ_CONTAINER_GROUP_ITEM_H_
 
-#include "inhul_item_data.h"
+#include "inhul_view_model_item.h"
 #include "gvm_container.h"
 
 #include <gtk/gtk.h>
@@ -19,6 +19,6 @@ GtkWidget*
 inhul_sq_container_group_item_create_widget_for_desktop_item(const InhulDesktopItemData* data, gboolean smallItem);
 
 InhulSqContainerGroupItem*
-inhul_sq_container_group_item_new(InhulItemData* item);
+inhul_sq_container_group_item_new(InhulViewModelItem* item);
 
 #endif //_SQ_CONTAINER_GROUP_ITEM_H_

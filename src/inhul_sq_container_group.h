@@ -1,8 +1,8 @@
 #ifndef _INHUL_SQ_CONTAINER_GROUP_H_
 #define _INHUL_SQ_CONTAINER_GROUP_H_
 
-#include "inhul_item_data.h"
 #include "gvm_container.h"
+#include "inhul_view_model_group.h"
 
 #include <gtk/gtk.h>
 
@@ -15,7 +15,7 @@ G_BEGIN_DECLS
 G_DECLARE_FINAL_TYPE(InhulSqContainerGroup, inhul_sq_container_group, INHUL, SQ_CONTAINER_GROUP, GvmContainer);
 
 InhulSqContainerGroup*
-inhul_sq_container_group_new(InhulItemGroup* group);
+inhul_sq_container_group_new(InhulViewModelGroup* group);
 
 G_END_DECLS
 

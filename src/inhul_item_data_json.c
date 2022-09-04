@@ -1,4 +1,5 @@
 #include "inhul_item_data_json.h"
+#include "gvm_iterator.h"
 
 #include <json-glib/json-glib.h>
 
@@ -62,12 +63,13 @@ inhul_item_data_save_item(InhulItemData* item, JsonBuilder* builder)
 		json_builder_set_member_name(builder, "Children");
 		json_builder_begin_array(builder);
 
-		GvmIterator* iter = gvm_observable_collection_get_iterator(item->children);
+		GvmIterator* iter = g_ptr_array_get_iterator(item->children);
 
-		for(gpointer child = gvm_iterator_get_current(iter); gvm_iterator_move_next(iter); child = gvm_iterator_get_current(iter))
+		while(gvm_iterator_move_next(iter))
 		{
-			InhulItemData* childItem = (InhulItemData*)child;
+			gpointer child = gvm_iterator_get_current(iter);
 
+			InhulItemData* childItem = (InhulItemData*)child;
 			inhul_item_data_save_item(childItem, builder);
 		}
 
@@ -93,12 +95,11 @@ inhul_item_data_save_group(InhulItemGroup* group, JsonBuilder* builder)
 	json_builder_set_member_name(builder, "Items");
 	json_builder_begin_array(builder);
 
-	GvmIterator* iter = gvm_observable_collection_get_iterator(group->children);
+	GvmIterator* iter = g_ptr_array_get_iterator(group->children);
 
-	for(gpointer item = gvm_iterator_get_current(iter); gvm_iterator_move_next(iter); item = gvm_iterator_get_current(iter))
+	while(gvm_iterator_move_next(iter))
 	{
-		InhulItemData* childItem = (InhulItemData*)item;
-
+		InhulItemData* childItem = (InhulItemData*)gvm_iterator_get_current(iter);
 		inhul_item_data_save_item(childItem, builder);
 	}
 
@@ -110,7 +111,7 @@ inhul_item_data_save_group(InhulItemGroup* group, JsonBuilder* builder)
 }
 
 void
-inhul_item_data_save_data(const gchar* jsonFile, GvmObservableCollection* items, GError** err)
+inhul_item_data_save_data(const gchar* jsonFile, GPtrArray* items, GError** err)
 {
 	GError* innErr = NULL;
 
@@ -121,11 +122,11 @@ inhul_item_data_save_data(const gchar* jsonFile, GvmObservableCollection* items,
 	json_builder_set_member_name(builder, "Groups");
 	json_builder_begin_array(builder);
 
-	GvmIterator* iter = gvm_observable_collection_get_iterator(items);
+	GvmIterator* iter = g_ptr_array_get_iterator(items);
 
-	for(gpointer item = gvm_iterator_get_current(iter); gvm_iterator_move_next(iter); item = gvm_iterator_get_current(iter))
+	while(gvm_iterator_move_next(iter))
 	{
-		InhulItemGroup* group = (InhulItemGroup*)item;
+		InhulItemGroup* group = (InhulItemGroup*)gvm_iterator_get_current(iter);
 
 		inhul_item_data_save_group(group, builder);
 	}
@@ -156,7 +157,7 @@ inhul_item_data_build(JsonObject* node)
 	InhulItemGroup* group = g_new(InhulItemGroup, 1);
 
 	group->name = g_strdup(json_object_get_string_member(node, "Name"));
-	group->children = gvm_observable_collection_new();
+	group->children = g_ptr_array_new();
 
 	JsonArray* children = json_object_get_array_member(node, "Items");
 	guint childrenCount = json_array_get_length(children);
@@ -165,7 +166,7 @@ inhul_item_data_build(JsonObject* node)
 		JsonObject* jsonItem = json_array_get_object_element(children, i);
 		InhulItemData* item = inhul_item_data_build_item(jsonItem, ITEM_TALL);
 
-		gvm_observable_collection_add(group->children, item);
+		g_ptr_array_add(group->children, item);
 	}
 
 	return group;
@@ -185,7 +186,7 @@ inhul_item_data_build_item(JsonObject* jsonItem, InhulItemLevel level)
 	if(item->type == INHUL_ITEM_CONTAINER)
 	{
 		JsonArray* jsonChildren = json_object_get_array_member(jsonItem, "Children");
-		GvmObservableCollection* children = gvm_observable_collection_new();
+		GPtrArray* children = g_ptr_array_new();
 		guint childrenCount = json_array_get_length(jsonChildren);
 		for(guint i = 0; i<childrenCount; i++)
 		{
@@ -193,7 +194,7 @@ inhul_item_data_build_item(JsonObject* jsonItem, InhulItemLevel level)
 
 			InhulItemData* childItem = inhul_item_data_build_item(jsonChild, level + 1);
 
-			gvm_observable_collection_add(children, childItem);
+			g_ptr_array_add(children, childItem);
 		}
 
 		item->children = children;

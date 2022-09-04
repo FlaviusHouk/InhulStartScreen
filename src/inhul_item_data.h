@@ -2,7 +2,6 @@
 #define _INHUL_ITEM_DATA_H_
 
 #include "inhul_command.h"
-#include "gvm_observable_collection.h"
 
 #include <glib.h>
 
@@ -47,7 +46,7 @@ struct _InhulItemData
 	InhulItemLevel level;
 	union
 	{
-		GvmObservableCollection* children; /*Container*/
+		GPtrArray* children; /*Container*/
 		InhulDesktopItemData* desktopItemData;
 	};
 };
@@ -60,8 +59,8 @@ struct _InhulItemDataStackItem
 
 struct _InhulItemGroup
 {
-	const gchar* name;
-	/*InhulItemData*/ GvmObservableCollection* children;
+	gchar* name;
+	/*InhulItemData*/ GPtrArray* children;
 };
 
 GKeyFile*

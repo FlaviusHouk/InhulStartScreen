@@ -6,7 +6,8 @@ OBJS= src/main.o \
 	src/inhul_sq_container_group.o \
 	src/inhul_item_data_json.o \
 	src/inhul_item_data.o \
-	src/inhul_sq_container_view_model.o \
+	src/inhul_view_model_group.o \
+	src/inhul_view_model_item.o \
 	src/gvm_observable_collection.o \
 	src/gvm_iterator.o \
 	src/gvm_container.o
