@@ -5,6 +5,7 @@ struct _InhulViewModelItem
 	GObject baseObject;
 
 	InhulItemData* item;
+	gboolean isSelected;
 
 	GvmObservableCollection* children;
 
@@ -15,6 +16,7 @@ struct _InhulViewModelItem
 typedef enum
 {
 	PROP_LEVEL = 1,
+	PROP_IS_SELECTED,
 	N_PROPS
 } InhulViewModelItemProps;
 
@@ -33,6 +35,10 @@ inhul_view_model_item_get_property(GObject* obj, guint propId, GValue* value, GP
 			g_value_set_int(value, this->item->level);
 			break;
 
+		case PROP_IS_SELECTED:
+			g_value_set_boolean(value, this->isSelected);
+			break;
+
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID(obj, propId, pspec);
 			break;
@@ -46,10 +52,22 @@ inhul_view_model_item_set_property(GObject* obj, guint propId, const GValue* val
 
 	switch((InhulViewModelItemProps)propId)
 	{
+		case PROP_IS_SELECTED:
+			this->isSelected = g_value_get_boolean(value);
+			break;
+
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID(obj, propId, pspec);
 			break;
 	}
+}
+
+static void
+inhul_view_model_item_dispose(GObject* obj)
+{
+	InhulViewModelItem* this = INHUL_VIEW_MODEL_ITEM(obj);
+
+
 }
 
 static void
@@ -58,8 +76,11 @@ inhul_view_model_item_class_init(InhulViewModelItemClass* klass)
 	GObjectClass* objectClass = G_OBJECT_CLASS(klass);
 	objectClass->get_property = inhul_view_model_item_get_property;
 	objectClass->set_property = inhul_view_model_item_set_property;
+	objectClass->dispose      = inhul_view_model_item_dispose;
 
 	props[PROP_LEVEL] = g_param_spec_int(INHUL_VIEW_MODEL_ITEM_PROP_LEVEL, "Level", "Level on which item is placed", ITEM_TALL, ITEM_SMALL + 1, ITEM_TALL, G_PARAM_READABLE);
+
+	props[PROP_IS_SELECTED] = g_param_spec_boolean(INHUL_VIEW_MODEL_ITEM_PROP_IS_SELECTED, "Is selected", "Flag that identifies that item is selected", FALSE, G_PARAM_READWRITE);
 
 	g_object_class_install_properties(objectClass, N_PROPS, props);
 }
@@ -71,6 +92,7 @@ inhul_view_model_item_init(InhulViewModelItem* this)
 	this->children = NULL;
 	this->makeBiggerCommand = NULL;
 	this->makeSmallerCommand = NULL;
+	this->isSelected = FALSE;
 }
 
 InhulViewModelItem*
@@ -167,6 +189,26 @@ inhul_view_model_item_get_desktop_item_data(InhulViewModelItem* this)
 	g_assert(this->item->type == INHUL_ITEM_DESKTOP_FILE);
 
 	return this->item->desktopItemData;
+}
+
+gboolean
+inhul_view_model_item_get_is_selected(InhulViewModelItem* this)
+{
+	g_assert(this);
+
+	gboolean value = FALSE;
+
+	g_object_get(G_OBJECT(this), INHUL_VIEW_MODEL_ITEM_PROP_IS_SELECTED, &value, NULL);
+
+	return value;
+}
+
+void
+inhul_view_model_item_set_is_selected(InhulViewModelItem* this, gboolean value)
+{
+	g_assert(this);
+
+	g_object_set(G_OBJECT(this), INHUL_VIEW_MODEL_ITEM_PROP_IS_SELECTED, value, NULL);
 }
 
 /*Make bigger command*/

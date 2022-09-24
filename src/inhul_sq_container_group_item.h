@@ -16,7 +16,7 @@
 G_DECLARE_FINAL_TYPE(InhulSqContainerGroupItem, inhul_sq_container_group_item, INHUL, SQ_CONTAINER_GROUP_ITEM, GvmContainer);
 
 GtkWidget*
-inhul_sq_container_group_item_create_widget_for_desktop_item(const InhulDesktopItemData* data, gboolean smallItem);
+inhul_sq_container_group_item_create_widget(InhulViewModelItem* this);
 
 InhulSqContainerGroupItem*
 inhul_sq_container_group_item_new(InhulViewModelItem* item);

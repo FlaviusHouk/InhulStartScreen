@@ -169,15 +169,12 @@ inhul_sq_container_group_forall(GtkContainer* container, gboolean include_intern
 static GtkWidget*
 inhul_sq_container_group_generate_item(gpointer item)
 {
-	InhulViewModelItem* childItem = (InhulViewModelItem*)item;
+	InhulViewModelItem* childItem = INHUL_VIEW_MODEL_ITEM(item);
 	InhulItemDataType itemType = inhul_view_model_item_get_item_type(childItem);
 
 	if(itemType == INHUL_ITEM_DESKTOP_FILE)
 	{
-		InhulDesktopItemData* desktopItemData = inhul_view_model_item_get_desktop_item_data(childItem);
-		InhulItemLevel level = inhul_view_model_item_get_level(childItem);
-
-		return inhul_sq_container_group_item_create_widget_for_desktop_item(desktopItemData, level == ITEM_SMALL);
+		return inhul_sq_container_group_item_create_widget(childItem);
 	}
 
 	return GTK_WIDGET(inhul_sq_container_group_item_new(childItem));

@@ -9,11 +9,15 @@ inhul_sq_container_group_item_forall(GtkContainer* container, gboolean include_i
 static GtkWidget*
 inhul_sq_container_group_item_generate_item(gpointer item);
 
+static gboolean
+inhul_sq_container_group_item_on_button_release (GtkWidget* widget, GdkEventButton ev, gpointer data);
+
 struct _InhulSqContainerGroupItem
 {
 	GvmContainer base;
 
 	InhulViewModelItem* item;
+	GdkWindow* eventWindow;
 };
 
 G_DEFINE_TYPE(InhulSqContainerGroupItem, inhul_sq_container_group_item, GVM_TYPE_CONTAINER); 
@@ -23,7 +27,7 @@ inhul_sq_container_group_item_class_init(InhulSqContainerGroupItemClass* klass)
 {
 	GtkWidgetClass* widgetClass = GTK_WIDGET_CLASS(klass);
 	widgetClass->size_allocate = inhul_sq_container_group_item_size_allocate;
-	
+
 	GtkContainerClass* containerClass = GTK_CONTAINER_CLASS(klass);
 	containerClass->forall = inhul_sq_container_group_item_forall;
 
@@ -36,6 +40,7 @@ inhul_sq_container_group_item_init(InhulSqContainerGroupItem* this)
 {
 	gtk_widget_set_has_window(GTK_WIDGET(this), FALSE);
 	this->item = NULL;
+	this->eventWindow = NULL;
 }
 
 InhulSqContainerGroupItem*
@@ -185,16 +190,12 @@ inhul_sq_container_group_item_forall(GtkContainer* container, gboolean include_i
 static GtkWidget*
 inhul_sq_container_group_item_generate_item(gpointer item)
 {
-	InhulViewModelItem* childItem = (InhulViewModelItem*)item;
+	InhulViewModelItem* childItem = INHUL_VIEW_MODEL_ITEM(item);
 	InhulItemDataType itemType = inhul_view_model_item_get_item_type(childItem);
 
 	if(itemType == INHUL_ITEM_DESKTOP_FILE)
 	{
-		InhulDesktopItemData* desktopItemData = inhul_view_model_item_get_desktop_item_data(childItem);
-
-		InhulItemLevel level = inhul_view_model_item_get_level(childItem);
-
-		return inhul_sq_container_group_item_create_widget_for_desktop_item(desktopItemData, level == ITEM_SMALL);
+		return inhul_sq_container_group_item_create_widget(childItem);
 	}
 
 	return GTK_WIDGET(inhul_sq_container_group_item_new(childItem));
@@ -208,12 +209,41 @@ inhul_sq_container_group_item_activated(GtkButton* button, gpointer data)
 	inhul_command_execute(command);
 }
 
-GtkWidget*
-inhul_sq_container_group_item_create_widget_for_desktop_item(const InhulDesktopItemData* data, gboolean smallItem)
+static gboolean
+inhul_sq_container_group_item_on_button_release(GtkWidget* widget, GdkEventButton ev, gpointer data)
+{	
+	g_print("type: %d; button: %d; \n", ev.type, ev.button);
+
+	if(ev.type == GDK_BUTTON_RELEASE && ev.button == 3 /*Right button*/)
+	{
+		InhulViewModelItem* itemVm = INHUL_VIEW_MODEL_ITEM (data);
+
+		inhul_view_model_item_set_is_selected(itemVm, TRUE);
+	}
+
+	return FALSE;
+}
+
+static void
+on_button_unrealize(GtkWidget* button, gpointer data)
 {
+	GdkWindow* eventWindow = gtk_button_get_event_window(GTK_BUTTON(button));
+	
+
+	int i = 0;
+	i++;
+}
+
+GtkWidget*
+inhul_sq_container_group_item_create_widget(InhulViewModelItem* itemVm)
+{
+	InhulDesktopItemData* data = inhul_view_model_item_get_desktop_item_data(itemVm);
+	InhulItemLevel level = inhul_view_model_item_get_level(itemVm);
+	gboolean smallItem = level == ITEM_SMALL;
 	GError* err = NULL;
 
 	GtkWidget* button = gtk_button_new();
+	gtk_widget_add_events(button, GDK_BUTTON_RELEASE_MASK);
 	GtkWidget* box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);	
 
 	if(!smallItem)
@@ -247,5 +277,8 @@ inhul_sq_container_group_item_create_widget_for_desktop_item(const InhulDesktopI
 	gtk_style_context_add_class(buttonStyleContext, "item");
 
 	gtk_container_add(GTK_CONTAINER(button), GTK_WIDGET(box));
+
+	g_signal_connect(button, "realize", G_CALLBACK(on_button_unrealize), itemVm);
+
 	return button;
 }

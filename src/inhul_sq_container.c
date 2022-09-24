@@ -125,9 +125,14 @@ inhul_sq_container_forall(GtkContainer* container, gboolean include_internals, G
 }
 
 InhulSqContainer*
-inhul_sq_container_new()
+inhul_sq_container_new(InhulViewModelMain* vm)
 {
+	g_assert(vm);
+
 	InhulSqContainer* this = INHUL_SQ_CONTAINER(g_object_new(INHUL_TYPE_SQ_CONTAINER, NULL));
+
+	GvmObservableCollection* groups = inhul_view_model_main_get_groups(vm);
+	gvm_container_set_items(GVM_CONTAINER(this), groups);
 
 	return this;
 }

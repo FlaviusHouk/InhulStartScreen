@@ -6,6 +6,7 @@
 #include "inhul_sq_container.h"
 #include "inhul_item_data_json.h"
 #include "inhul_view_model_group.h"
+#include "inhul_view_model_main.h"
 #include "inhul_sq_container_group_item.h"
 
 #define DEFAULT_LAYOUT_FILE_NAME "layout.json"
@@ -21,7 +22,8 @@ static GOptionEntry entries[] =
 struct _SetItemsData
 {
 	InhulSqContainer* container;
-	GvmObservableCollection* items;
+	InhulViewModelMain* mainVm;
+	gint height;
 };
 
 static gboolean
@@ -29,7 +31,7 @@ set_items_on_idle(gpointer data)
 {
 	struct _SetItemsData* d = (struct _SetItemsData*)data;
 
-	gvm_container_set_items(GVM_CONTAINER(d->container), d->items);
+	inhul_view_model_main_generate_defaults(d->mainVm, d->height);
 	gtk_widget_show_all(GTK_WIDGET(d->container));
 
 	g_free(d);
@@ -43,76 +45,12 @@ on_size_allocated(GtkWidget* widget, GtkAllocation* allocation, gpointer data)
 	g_signal_handlers_disconnect_by_func(G_OBJECT(widget), on_size_allocated, data);
 
 	InhulSqContainer* container = INHUL_SQ_CONTAINER(widget);
-	GPtrArray* items = (GPtrArray*)data;
-	GvmObservableCollection* structuredItems = gvm_observable_collection_new();
+	InhulViewModelMain* mainVm = INHUL_VIEW_MODEL_MAIN(data);
 
-	gint height = allocation->height / (WIDE_ITEM_HEIGHT + 5);
-	gint groupElemCount = height * 2 * 3;
-	gint groupCount = (gint)ceil(items->len * 1.0 / groupElemCount);
-
-	for(gint i = 0; i < groupCount; i++)
-	{
-		InhulItemGroup* group = g_new0(InhulItemGroup, 1);
-		group->children = g_ptr_array_new();
-
-		for(gint j = 0; j < 3; j++)
-		{
-			InhulItemData* tallItem = g_new(InhulItemData, 1);
-			tallItem->type = INHUL_ITEM_CONTAINER;
-			tallItem->level = ITEM_TALL;
-			tallItem->children = g_ptr_array_new();
-
-			for(gint k = 0; k < height; k++)
-			{	
-				gint index = i * groupElemCount + j * 2 * height + k * 2;
-
-				if(index >= items->len)
-				{
-					g_ptr_array_add(group->children, tallItem);
-
-					goto cycle_end;
-				}
-
-				InhulItemData* wideItem = g_new(InhulItemData, 1);
-				wideItem->type = INHUL_ITEM_CONTAINER;
-				wideItem->level = ITEM_WIDE;
-				wideItem->children = g_ptr_array_new();
-				
-				InhulItemData* item = g_new(InhulItemData, 1);
-				item->type = INHUL_ITEM_DESKTOP_FILE;
-				item->level = ITEM_COMMON;
-				item->desktopItemData = (InhulDesktopItemData*)items->pdata[index];
-
-				g_ptr_array_add(wideItem->children, item);
-				g_ptr_array_add(tallItem->children, wideItem);
-				index++;
-
-				if(index >= items->len)
-				{
-					g_ptr_array_add(group->children, tallItem);
-
-					goto cycle_end;
-				}
-
-				item = g_new(InhulItemData, 1);
-				item->type = INHUL_ITEM_DESKTOP_FILE;
-				item->level = ITEM_COMMON;
-				item->desktopItemData = (InhulDesktopItemData*)items->pdata[index];
-
-				g_ptr_array_add(wideItem->children, item);
-			}
-
-			g_ptr_array_add(group->children, tallItem);
-		}	
-
-		cycle_end:
-		InhulViewModelGroup* groupVm = inhul_view_model_group_new(group);
-		gvm_observable_collection_add(structuredItems, groupVm);
-	}
-
-	struct _SetItemsData* d = g_new(struct _SetItemsData, 1);
+	struct _SetItemsData* d = g_new(struct _SetItemsData, 1);	
+	d->height = allocation->height / (WIDE_ITEM_HEIGHT + 5);
 	d->container = container;
-	d->items = structuredItems;
+	d->mainVm = mainVm;
 
 	g_idle_add(set_items_on_idle, d);
 }
@@ -122,25 +60,13 @@ on_shutdown(GApplication* app, gpointer data)
 {
 	GError* err = NULL;
 
-	InhulSqContainer* container = INHUL_SQ_CONTAINER(data);
+	InhulViewModelMain* mainVm = INHUL_VIEW_MODEL_MAIN(data);
+	inhul_view_model_main_save_config(mainVm, "layout.json", &err);
 
-	GvmObservableCollection* items = gvm_container_get_items(GVM_CONTAINER(container));
-	GPtrArray* itemsToWrite = g_ptr_array_new();
-
-	GvmIterator* iter = gvm_observable_collection_get_iterator(items);
-
-	while(gvm_iterator_move_next(iter))
+	if(err != NULL)
 	{
-		InhulViewModelGroup* groupVm = INHUL_VIEW_MODEL_GROUP(gvm_iterator_get_current(iter));
-
-		InhulItemGroup* group = inhul_view_model_group_get_group(groupVm);
-
-		g_ptr_array_add(itemsToWrite, group);
+		g_error("%s\n", err->message);
 	}
-
-	inhul_item_data_save_data("layout.json", itemsToWrite, &err);
-
-	g_ptr_array_unref(itemsToWrite);
 }
 
 static void
@@ -188,29 +114,19 @@ on_application_activated(GtkApplication* app, gpointer user_data)
 
 	gtk_box_pack_start(GTK_BOX(box), GTK_WIDGET(titleBox), FALSE, FALSE, 5);
 
-	InhulSqContainer* sqContainer = inhul_sq_container_new();
+	InhulViewModelMain* mainVm = inhul_view_model_main_new ();
+	InhulSqContainer* sqContainer = inhul_sq_container_new(mainVm);
+
 	if(configFileName != NULL)
 	{	
-		/*InhulItemGroup*/ GPtrArray* groups = inhul_item_data_load_from_json(configFileName, &err);
+		inhul_view_model_main_read_items(mainVm, configFileName, &err);
 
 		if(err != NULL)
 		{
-			g_print("%s\n", err->message);
+			g_error("%s\n", err->message);
 			g_application_release(G_APPLICATION(app));
+			return;
 		}
-
-		for(gint i = 0; i < groups->len; i++)
-		{
-			InhulItemGroup* group = (InhulItemGroup*)groups->pdata[i];
-
-			InhulViewModelGroup* groupVm = inhul_view_model_group_new(group);
-
-			groups->pdata[i] = groupVm;
-		}
-
-		GvmObservableCollection* items = gvm_observable_collection_new_with_data(groups);
-
-		gvm_container_set_items(GVM_CONTAINER(sqContainer), items);
 	}
 
 	GtkWidget* scroller = gtk_scrolled_window_new(NULL, NULL);
@@ -227,12 +143,10 @@ on_application_activated(GtkApplication* app, gpointer user_data)
 
 	if(configFileName == NULL)
 	{
-		/*InhulDesktopItemData*/ GPtrArray* desktopItems = inhul_item_data_generate_default();
-
-		g_signal_connect(G_OBJECT(sqContainer), "size-allocate", G_CALLBACK(on_size_allocated), desktopItems);
+		g_signal_connect(G_OBJECT(sqContainer), "size-allocate", G_CALLBACK(on_size_allocated), mainVm);
 	}
 
-	g_signal_connect(G_OBJECT(app), "shutdown", G_CALLBACK(on_shutdown), sqContainer);
+	g_signal_connect(G_OBJECT(app), "shutdown", G_CALLBACK(on_shutdown), mainVm);
 }
 
 int main(int argc, char** argv)

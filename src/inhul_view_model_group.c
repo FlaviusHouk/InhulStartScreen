@@ -170,7 +170,7 @@ inhul_view_model_group_set_name(InhulViewModelGroup* group, const gchar* name)
 {
 	g_assert(group);
 
-	g_object_set(group, INHUL_VIEW_MODEL_GROUP_PROP_NAME, &name);
+	g_object_set(group, INHUL_VIEW_MODEL_GROUP_PROP_NAME, name, NULL);
 }
 
 GvmObservableCollection*
