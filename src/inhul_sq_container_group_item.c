@@ -212,7 +212,7 @@ inhul_sq_container_group_item_activated(GtkButton* button, gpointer data)
 static gboolean
 inhul_sq_container_group_item_on_button_release(GtkWidget* widget, GdkEventButton ev, gpointer data)
 {	
-	g_print("type: %d; button: %d; \n", ev.type, ev.button);
+	g_print("signal: type: %d; button: %d; \n", ev.type, ev.button);
 
 	if(ev.type == GDK_BUTTON_RELEASE && ev.button == 3 /*Right button*/)
 	{
@@ -224,14 +224,14 @@ inhul_sq_container_group_item_on_button_release(GtkWidget* widget, GdkEventButto
 	return FALSE;
 }
 
+static int i = 0;
 static void
 on_button_unrealize(GtkWidget* button, gpointer data)
 {
 	GdkWindow* eventWindow = gtk_button_get_event_window(GTK_BUTTON(button));
-	
 
-	int i = 0;
 	i++;
+	g_print("Unrealized %d\n", i);
 }
 
 GtkWidget*
@@ -278,7 +278,8 @@ inhul_sq_container_group_item_create_widget(InhulViewModelItem* itemVm)
 
 	gtk_container_add(GTK_CONTAINER(button), GTK_WIDGET(box));
 
-	g_signal_connect(button, "realize", G_CALLBACK(on_button_unrealize), itemVm);
+	g_signal_connect(button, "unrealize", G_CALLBACK(on_button_unrealize), itemVm);
+	g_signal_connect(button, "button-release-event", G_CALLBACK(inhul_sq_container_group_item_on_button_release), itemVm);
 
 	return button;
 }
